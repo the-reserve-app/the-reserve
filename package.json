@@ -32,6 +32,7 @@
     "verify:build-secrets": "node --experimental-strip-types scripts/verify-build-secrets.mjs",
     "schema:compare": "node scripts/schema-compare.mjs",
     "seed:tables": "node scripts/seed-tables-load.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
     "bench:tables": "node scripts/bench-tables.mjs",
     "e2e:forms": "node scripts/e2e-forms.mjs"
   },
