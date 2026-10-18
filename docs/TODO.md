@@ -196,6 +196,14 @@ QUEUED (in order):
 
 ## Punch list (small, unblocked, any-session)
 
+- Create a separate STAGING Supabase project for Vercel preview
+  deployments, built from the migrations (`supabase db push` against it,
+  then `schema:compare` at zero differences), with its own
+  `ask_readonly` password and test Stripe keys. Until it exists, preview
+  deployments stay OFF: a preview must never carry the production
+  database's keys (docs/deployment.md, decision 3 and "Branching and
+  releases"). Added 2026-10-18.
+
 - The year utilisation table (`pages/financials.vue`) and the dashboard
   bookings chart (`components/dashboard/BookingsChart.vue`) load every
   appointment in the period into the browser — a year is ~8,000 rows,
@@ -663,7 +671,10 @@ overlap it are pointers, not restatements (one fact, one place).
   repo is public now, so push protection may already be on; verify)
 - ~~CI: GitHub Action running nuxt typecheck + vitest on PRs (before the
   backend engineer's first PR)~~ DONE 2026-09-20 — see the 09-19 → 20
-  block: typecheck + tests AND lint required, PR required, bypass off.
+  block: PR required, bypass off, and the four required checks
+  `typecheck + tests`, `lint`, `database (local stack + harnesses)` and
+  `e2e (built app + Playwright)` (the last two joined later; `e2e-stripe`
+  runs but is not required).
 - When the backend engineer joins: turn ON "require approvals" in the
   main branch rule (off today because a single collaborator cannot
   self-approve). ~~Move the repo into a GitHub organisation~~ DONE

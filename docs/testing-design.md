@@ -211,7 +211,9 @@ NOT the spa's. Each is explained where it lands below.
 - The `e2e` CI job: stack, reset from migrations, export, build, start,
   `verify:leads` against the running app (it joins CI here), then
   Playwright; traces and screenshots uploaded on failure; the app stopped
-  in `always()`. Not a required check yet.
+  in `always()`. One of the four required checks on `main`
+  (`e2e (built app + Playwright)`; docs/deployment.md, "Branching and
+  releases").
 
 ### Stage 2 — structure
 

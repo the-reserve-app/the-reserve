@@ -1,5 +1,15 @@
 # The Reserve — conventions
 
+- Branching and releases: `main` is production and is protected — every
+  change lands through a pull request from a feature branch off `main`,
+  the four status checks (typecheck + tests, lint, database, e2e) must
+  pass, and nothing bypasses them. Required approvals are OFF until a
+  second engineer joins; turning them on is the step to take that day.
+  There is no long-lived development branch: Vercel's preview deployment
+  of each PR serves that purpose once Vercel is connected, and a preview
+  NEVER carries the production database's keys — so preview deployments
+  stay OFF until a separate staging Supabase project exists for them to
+  point at (docs/deployment.md, "Branching and releases").
 - Migrations: npx supabase migration new <name> → review → npm run db:push
   (chains typegen + tbls docs). NEVER edit applied migrations.
 - Push-first when one change adds columns/tables AND the route code reading
@@ -23,10 +33,17 @@
   DECODED JWT CLAIMS, typed as a Supabase User. The auth user id is the `sub`
   claim, NOT `.id`. `user.id` typechecks and is undefined at runtime, which
   is what wrote NULL into audit_log.actor_user_id across health_note.viewed /
-  appointment.booked / pos.checkout. Use `user.sub ?? user.id` (accept both,
-  so a library change can't reintroduce it). Staff identity via
-  current_staff_id() RPC; permission RPC param is `perm` (NOT p_key)
-- Dates: never toISOString() for day-granular keys — toLocaleDateString("en-CA")
+  appointment.booked / pos.checkout. Use `actorUserId(user)` from
+  `server/utils/requireUser.ts` (`sub ?? id`, accepting both so a library
+  change can't reintroduce it); never reach into the user object. Staff
+  identity via current_staff_id() RPC; permission RPC param is `perm`
+  (NOT p_key)
+- Dates: a day-granular key ("YYYY-MM-DD") comes from `shared/time/`
+  only — `localDateKey(instant, zone)` / `todayKey(zone)` for an instant
+  in the location's zone, `shiftDays` and friends for arithmetic. Never
+  toISOString() (UTC first, wrong day in the evening) and never
+  toLocaleDateString: `tests/guards/browserClock.test.ts` fails the suite
+  on any toLocale* in app/. The full rule is the time-zone section below.
 - Time zones: BUSINESS time — an appointment, opening hours, which day
   something falls on — formats and buckets in the LOCATION's zone, through
   `shared/time/zone.ts` (one module for the slots route and the schedule,
@@ -133,9 +150,10 @@
   `phone` uneditable. `tests/shared/formValidation.test.ts` is the shape
   to copy: it asserts the two sides AGREE across deliberately awkward
   inputs, so drift fails the test regardless of which side is right.
-  Known live seam, currently consistent but unasserted: `shared/ask/presets.ts`
-  ids must pair with `PRESET_SQL` keys or a preset silently falls through
-  to the LLM — 15/15 match today, and nothing checks it.
+  The seam between `shared/ask/presets.ts` ids and `PRESET_SQL` keys (an
+  unpaired preset silently falls through to the LLM) is asserted both
+  ways by `npm run verify:presets`: every chip has a query and every
+  query is reachable from a chip.
 - "Built" means a human can complete the flow from the UI. Not that the
   machinery exists. The failure mode is specific and it passed every gate:
   schema applied, route written, typecheck 0, unit tests green, boundary
