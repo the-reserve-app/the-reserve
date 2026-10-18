@@ -53,6 +53,13 @@ Use Vercel's PER-ENVIRONMENT env vars (production / preview / development):
 - Consider Vercel's preview protection (password) so previews aren't
   publicly reachable at all — but note the Stripe webhook route on PROD
   must NOT be behind any such protection, or Stripe can't reach it.
+- A preview NEVER uses the production database's keys: no production
+  `NUXT_PUBLIC_SUPABASE_URL`, publishable key, secret key or ask DSN in
+  the preview environment. There is no second database to point them at
+  yet, so **preview deployments stay OFF until a separate staging
+  Supabase project exists** (board item in docs/TODO.md); until then a
+  change is tried on the local stack (`npm run build:check && npm run
+  app:start`) and the CI journeys.
 
 ## The decisions that are already right by design
 
@@ -200,6 +207,27 @@ rate-limit counters rather than corrupting anything. Absent, the public
 submission route refuses to serve: fail-closed on purpose, so a missing
 secret shows up as an outage, not as silently weaker hashing.
 
+## Branching and releases
+
+- `main` is production. It is protected on GitHub: a pull request is
+  required, the four status checks must pass (`typecheck + tests`,
+  `lint`, `database (local stack + harnesses)`, `e2e (built app +
+  Playwright)`), and nothing bypasses them, administrators included. `e2e-stripe` runs on every PR
+  but is not required, because it depends on the sandbox secrets.
+- Every change is a feature branch off `main`, merged through a PR and
+  deleted afterwards. There is no long-lived development branch.
+- Previews stand in for one: once Vercel is connected, every PR gets a
+  preview deployment, and that is where a change is tried before it
+  merges. A preview never uses the production database's keys — it
+  reads Vercel's PREVIEW environment, per decision 3 above, never the
+  production one — so preview deployments stay OFF until a separate
+  staging Supabase project exists for them to point at.
+- Required approvals are OFF for now: one engineer cannot approve their
+  own PR, so the rule would only block. **When a second engineer joins,
+  turning on required approvals (one review) in the `main` branch
+  protection is the step to take.** Nothing else in this workflow
+  changes that day.
+
 ## Deploy checklist (pre-launch)
 
 Before first production deploy:
@@ -213,6 +241,9 @@ Before first production deploy:
       burst of ask queries.
 - [ ] All env vars above set in PRODUCTION with prod values; preview env
       set with non-prod (test Stripe, empty/non-prod leads, test pepper).
+- [ ] Preview deployments OFF in Vercel until the staging Supabase project
+      exists; when it does, the preview environment carries that
+      project's URL and keys and never production's (decision 3).
 - [ ] Stripe: live keys swapped in; prod webhook endpoint registered at
       the prod URL in the Stripe dashboard; its signing secret set as
       NUXT_STRIPE_WEBHOOK_SECRET (prod env only); webhook route reachable,

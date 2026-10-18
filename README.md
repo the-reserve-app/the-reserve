@@ -159,6 +159,20 @@ and options, triggers by enabled state), `npm run seed:tables` /
 local only), and `scripts/_cleanup.mjs` (the only way a test run's
 append-only rows are removed: direct connection, replica mode, localhost).
 
+## Branching and releases
+
+`main` is production, and it is protected: a pull request is required,
+the four status checks must pass (`typecheck + tests`, `lint`, `database`,
+`e2e`), and there is no bypassing them. Required approvals are off until
+a second engineer joins.
+
+Every change is a feature branch off `main`, merged through a PR; the
+branch is deleted after the merge. There is no long-lived development
+branch. Once Vercel is connected, its preview deployment of each PR is
+where a change is tried before it merges — and a preview never uses the
+production database's keys (`docs/deployment.md`, decision 3), so
+previews stay off until a separate staging Supabase project exists.
+
 ## The rules that bite
 
 Full list and reasoning in `CLAUDE.md`. The ones that cost real debugging
@@ -178,8 +192,11 @@ time here:
 - **`requireUser(event)` returns DECODED JWT CLAIMS.** The auth id is the
   `sub` claim; `user.id` typechecks and is `undefined` at runtime. Use the
   `actorUserId()` helper.
-- **Day-granular dates use `toLocaleDateString("en-CA")`**, never
-  `toISOString()` — which converts to UTC first and lands on the wrong day.
+- **Day-granular keys come from `shared/time/`** (`localDateKey`,
+  `todayKey`, `shiftDays`), in the location's zone. Never `toISOString()`,
+  which converts to UTC first and lands on the wrong day, and never
+  `toLocaleDateString`: the browser-clock guard fails the suite on any
+  `toLocale*` call in `app/`.
 - **Two code paths deciding one predicate will diverge.** Derive it once, or
   test the edge where they would disagree. The architecture puts predicates
   in both plpgsql and TypeScript, so this recurs by design.
